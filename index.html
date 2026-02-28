@@ -704,18 +704,8 @@
 
         async function fetchFeishuData() {
             try {
-                if (!feishuToken && !await getFeishuToken()) {
-                    console.error('获取token失败');
-                    return [];
-                }
-                const url = 'https://open.feishu.cn/open-apis/bitable/v1/apps/' + FEISHU_CONFIG.appToken + '/tables/' + FEISHU_CONFIG.tableId + '/records?pageSize=500';
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': 'Bearer ' + feishuToken,
-                        'Content-Type': 'application/json'
-                    }
-                });
+                // 使用本地代理API（解决CORS问题）
+                const response = await fetch('/api/data');
                 const result = await response.json();
                 if (result.code !== 0) {
                     console.error('API错误:', result.msg);
