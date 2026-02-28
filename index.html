@@ -704,11 +704,11 @@
 
         async function fetchFeishuData() {
             try {
-                // 使用本地代理API（解决CORS问题）
-                const response = await fetch('/api/data');
+                // 直接读取本地JSON数据文件
+                const response = await fetch('./data.json');
                 const result = await response.json();
                 if (result.code !== 0) {
-                    console.error('API错误:', result.msg);
+                    console.error('数据错误:', result.msg);
                     return [];
                 }
                 const records = result.data.items.map(function(item, index) {
