@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- 微信适配专用meta -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="format-detection" content="telephone=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>机务人员授权信息查询系统</title>
+    <!-- 引入SheetJS库用于Excel处理 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            padding: 10px; /* 移动端减少内边距 */
+            font-size: 14px; /* 基础字体适配移动端 */
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 15px; /* 移动端减少内边距 */
+        }
+
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+            font-size: 18px; /* 移动端标题字号 */
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .login-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .login-area input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        /* 新增：优化搜索区域样式，支持多条件查询 */
+        .search-container {
+            width: 100%;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+        }
+        
+        .search-title {
+            font-size: 14px;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .advanced-search {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+            align-items: flex-start; /* 修改为flex-start，适配多选框高度 */
+        }
+        
+        .advanced-search .form-item {
+            flex: 1;
+            min-width: 150px;
+        }
+        
+        .advanced-search label {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        
+        .advanced-search input, .advanced-search select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        /* 新增：授权公司多选框样式 */
+        .company-checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-height: 150px; /* 调高最大高度，适配更多公司 */
+            overflow-y: auto;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .company-checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 6px;
+            background-color: #fff;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+        
+        .select-all-companies {
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: #3498db;
+            cursor: pointer;
+        }
+
+        #searchInput {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%; /* 移动端占满宽度 */
+            flex: 1;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+            touch-action: manipulation; /* 优化移动端触摸 */
+        }
+
+        /* 权限控制相关按钮样式 */
+        #loginBtn {
+            background-color: #17a2b8;
+            color: white;
+        }
+        #loginBtn:hover {
+            background-color: #138496;
+        }
+
+        #logoutBtn {
+            background-color: #6c757d;
+            color: white;
+            display: none;
+        }
+        #logoutBtn:hover {
+            background-color: #5a6268;
+        }
+
+        #addBtn {
+            background-color: #2ecc71;
+            color: white;
+            display: none; /* 默认隐藏，管理员登录后显示 */
+        }
+        #addBtn:hover {
+            background-color: #27ae60;
+        }
+
+        #importBtn {
+            background-color: #17a2b8;
+            color: white;
+            display: none; /* 默认隐藏，管理员登录后显示 */
+            margin-left: 10px;
+        }
+        #importBtn:hover {
+            background-color: #138496;
+        }
+
+        #searchBtn, #advancedSearchBtn {
+            background-color: #3498db;
+            color: white;
+            white-space: nowrap; /* 防止按钮文字换行 */
+        }
+        #searchBtn:hover, #advancedSearchBtn:hover {
+            background-color: #2980b9;
+        }
+        
+        #resetSearchBtn {
+            background-color: #6c757d;
+            color: white;
+            white-space: nowrap;
+        }
+        #resetSearchBtn:hover {
+            background-color: #5a6268;
+        }
+
+        /* 批量删除按钮样式 */
+        #batchDeleteBtn {
+            background-color: #dc3545;
+            color: white;
+            display: none; /* 默认隐藏，管理员登录后显示 */
+            margin-left: 10px;
+        }
+        #batchDeleteBtn:hover {
+            background-color: #c82333;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 13px; /* 移动端表格字号 */
+        }
+
+        th, td {
+            padding: 10px 8px; /* 移动端减少单元格内边距 */
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            word-break: break-all; /* 防止长文本溢出 */
+        }
+
+        th {
+            background-color: #3498db;
+            color: white;
+            font-weight: normal;
+            font-size: 14px;
+            position: sticky;
+            top: 0; /* 表头吸顶，方便移动端滚动查看 */
+        }
+
+        /* 复选框列样式 */
+        th.checkbox-col, td.checkbox-col {
+            width: 40px;
+            text-align: center;
+        }
+
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .warning {
+            background-color: #fff3cd;
+        }
+
+        .expired {
+            background-color: #f8d7da;
+        }
+
+        .action-btn {
+            display: flex;
+            gap: 5px;
+        }
+
+        .edit-btn, .delete-btn {
+            padding: 4px 8px;
+            font-size: 12px;
+            display: none; /* 默认隐藏，管理员登录后显示 */
+        }
+
+        .edit-btn {
+            background-color: #ffc107;
+            color: white;
+        }
+        .edit-btn:hover {
+            background-color: #e0a800;
+        }
+
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+        .delete-btn:hover {
+            background-color: #c82333;
+        }
+
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 15px; /* 移动端模态框内边距 */
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh; /* 移动端限制模态框高度 */
+            overflow-y: auto; /* 内容溢出时滚动 */
+        }
+
+        .modal h2 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-size: 14px;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        /* Excel导入区域样式 */
+        .import-area {
+            padding: 20px;
+            text-align: center;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        .import-area:hover {
+            border-color: #3498db;
+        }
+        .import-area i {
+            font-size: 40px;
+            color: #999;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .import-tip {
+            color: #666;
+            font-size: 13px;
+            margin-top: 10px;
+            text-align: left;
+        }
+        .import-tip ul {
+            margin-top: 5px;
+            padding-left: 20px;
+        }
+        #excelFile {
+            display: none;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        #saveBtn, #confirmImportBtn {
+            background-color: #2ecc71;
+            color: white;
+        }
+        #saveBtn:hover, #confirmImportBtn:hover {
+            background-color: #27ae60;
+        }
+
+        #cancelBtn, #cancelImportBtn {
+            background-color: #6c757d;
+            color: white;
+        }
+        #cancelBtn:hover, #cancelImportBtn:hover {
+            background-color: #5a6268;
+        }
+
+        .reminder {
+            background-color: #d1ecf1;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
+            font-size: 13px;
+        }
+
+        .admin-tag {
+            color: #dc3545;
+            font-weight: bold;
+            margin-left: 10px;
+            display: none;
+        }
+
+        /* 导入预览表格样式 */
+        .preview-table {
+            width: 100%;
+            margin: 15px 0;
+            font-size: 12px;
+        }
+        .preview-table th {
+            padding: 6px;
+            font-size: 12px;
+        }
+        .preview-table td {
+            padding: 6px;
+            font-size: 12px;
+        }
+        .error-row {
+            background-color: #f8d7da;
+        }
+        .import-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        .success-result {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error-result {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        /* 移动端适配增强 */
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .search-box, .advanced-search {
+                width: 100%;
+            }
+            .btn-group {
+                display: flex;
+                width: 100%;
+                gap: 10px;
+            }
+            #addBtn, #importBtn, #batchDeleteBtn {
+                flex: 1;
+                margin-left: 0;
+            }
+            th:nth-child(8), td:nth-child(8) { /* 操作列在小屏最后显示 */
+                min-width: 80px;
+            }
+            /* 极小屏适配（手机竖屏） */
+            @media (max-width: 480px) {
+                th, td {
+                    padding: 6px 4px;
+                    font-size: 12px;
+                }
+                .action-btn {
+                    flex-direction: column;
+                    gap: 3px;
+                }
+                .login-area {
+                    flex-direction: column;
+                    align-items: stretch;
+                }
+                /* 表格列适配，授权公司列允许换行 */
+                td:nth-child(4) {
+                    max-width: 100px;
+                    word-break: break-word;
+                }
+                /* 移动端多选框适配 */
+                .company-checkbox-group {
+                    max-height: 180px; /* 进一步调高高度 */
+                }
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>机务人员授权信息查询系统</h1>
+        
+        <!-- 管理员登录区域 -->
+        <div class="login-area">
+            <input type="password" id="adminPwd" placeholder="请输入管理员密码">
+            <button id="loginBtn">管理员登录</button>
+            <button id="logoutBtn">退出登录</button>
+            <span class="admin-tag" id="adminTag">已登录（管理员）</span>
+        </div>
+        
+        <div class="reminder" id="reminderBox">
+            <strong>到期提醒：</strong> <span id="reminderText">暂无即将到期的授权信息</span>
+        </div>
+
+        <!-- 新增：重构搜索区域，增加多条件组合查询 -->
+        <div class="search-container">
+            <div class="search-title">快速查询（模糊搜索）</div>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="请输入姓名、授权机型或授权公司查询">
+                <button id="searchBtn">查询</button>
+            </div>
+            
+            <div class="search-title">精准查询（多条件组合）</div>
+            <div class="advanced-search">
+                <div class="form-item">
+                    <label for="nameSearch">人员姓名</label>
+                    <input type="text" id="nameSearch" placeholder="请输入姓名（精确匹配）">
+                </div>
+                <div class="form-item">
+                    <label>授权公司（可多选）</label>
+                    <!-- 替换：单选下拉框改为多选复选框组 -->
+                    <div class="select-all-companies" id="selectAllCompanies">全选/取消全选</div>
+                    <div class="company-checkbox-group" id="companyCheckboxGroup">
+                        <!-- 动态生成航空公司复选框 -->
+                    </div>
+                </div>
+                <div class="form-item">
+                    <label for="modelSearch">授权机型</label>
+                    <input type="text" id="modelSearch" placeholder="请输入机型（精确匹配）">
+                </div>
+                <div class="form-item" style="min-width: 100px;">
+                    <label>&nbsp;</label>
+                    <div style="display: flex; gap: 5px;">
+                        <button id="advancedSearchBtn">精准查询</button>
+                        <button id="resetSearchBtn">重置</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="btn-group">
+                <button id="addBtn">新增授权信息</button>
+                <button id="importBtn">导入Excel</button>
+                <button id="batchDeleteBtn">批量删除</button> <!-- 新增批量删除按钮 -->
+            </div>
+        </div>
+
+        <table id="authorizationTable">
+            <thead>
+                <tr>
+                    <th class="checkbox-col"><input type="checkbox" id="selectAll"></th> <!-- 新增全选复选框 -->
+                    <th>人员姓名</th>
+                    <th>授权机型</th>
+                    <th>授权公司</th>
+                    <th>授权日期</th>
+                    <th>到期日期</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <!-- 数据会通过JS动态生成 -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 新增/编辑模态框 -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">新增授权信息</h2>
+            <form id="authorizationForm">
+                <input type="hidden" id="recordId">
+                <div class="form-group">
+                    <label for="name">人员姓名</label>
+                    <input type="text" id="name" required placeholder="请输入姓名">
+                </div>
+                <div class="form-group">
+                    <label for="model">授权机型</label>
+                    <input type="text" id="model" required placeholder="请输入授权机型">
+                </div>
+                <!-- 关键修改：将单选下拉框改为多选复选框组 -->
+                <div class="form-group">
+                    <label>授权公司（可多选）</label>
+                    <div class="select-all-companies" id="modalSelectAllCompanies">全选/取消全选</div>
+                    <div class="company-checkbox-group" id="modalCompanyCheckboxGroup">
+                        <!-- 动态生成航空公司复选框 -->
+                    </div>
+                </div>
+                <!-- 结束修改 -->
+                <div class="form-group">
+                    <label for="authorizeDate">授权日期</label>
+                    <input type="date" id="authorizeDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="expireDate">到期日期</label>
+                    <input type="date" id="expireDate" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="cancelBtn">取消</button>
+                    <button type="submit" id="saveBtn">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Excel导入模态框 -->
+    <div class="modal" id="importModal">
+        <div class="modal-content">
+            <h2>导入Excel数据</h2>
+            <div class="import-area" onclick="document.getElementById('excelFile').click()">
+                <i>📤</i>
+                <p>点击上传Excel文件</p>
+                <p style="color: #999; font-size: 12px;">支持.xlsx、.xls格式</p>
+            </div>
+            <input type="file" id="excelFile" accept=".xlsx,.xls">
+            
+            <div class="import-tip">
+                <strong>Excel格式要求：</strong>
+                <ul>
+                    <li>表头必须包含：人员姓名、授权机型、授权公司、授权日期、到期日期</li>
+                    <li>授权公司必须是以下列表中的值（多个公司用逗号分隔）：中国国际航空、中国南方航空、中国东方航空、海南航空、深圳航空、厦门航空、四川航空、山东航空、春秋航空、吉祥航空、华夏航空、首都航空、天津航空、上海航空、祥鹏航空、西部航空、九元航空、东海航空、河北航空、金鹏航空、海航技术、西藏航空</li>
+                    <li>日期格式：YYYY-MM-DD（如：2024-01-15）</li>
+                    <li>请勿包含合并单元格</li>
+                </ul>
+            </div>
+
+            <!-- 导入预览区域 -->
+            <div id="importPreview" style="display: none;">
+                <h3 style="font-size: 16px; margin: 15px 0;">数据预览</h3>
+                <table class="preview-table" id="previewTable">
+                    <thead>
+                        <tr>
+                            <th>行号</th>
+                            <th>人员姓名</th>
+                            <th>授权机型</th>
+                            <th>授权公司</th>
+                            <th>授权日期</th>
+                            <th>到期日期</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="previewTableBody">
+                    </tbody>
+                </table>
+                
+                <div class="import-result success-result" id="successResult"></div>
+                <div class="import-result error-result" id="errorResult"></div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" id="cancelImportBtn">取消</button>
+                <button type="button" id="confirmImportBtn" style="display: none;">确认导入</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== 飞书数据加载（直接调用API） ====================
+        const FEISHU_CONFIG = {
+            appId: 'cli_a92be96b8924dcb1',
+            appSecret: 'hzimq5TAra8sTKSX6QFsHd1JKMQKgEHa',
+            appToken: 'O0kZbZifFa0MN3syVRKcjagJn2e',
+            tableId: 'tbl7M0z6XZbfKZ0Y'
+        };
+        let feishuToken = null;
+
+        async function getFeishuToken() {
+            const response = await fetch('https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    app_id: FEISHU_CONFIG.appId,
+                    app_secret: FEISHU_CONFIG.appSecret
+                })
+            });
+            const data = await response.json();
+            if (data.code === 0) {
+                feishuToken = data.tenant_access_token;
+                return true;
+            }
+            return false;
+        }
+
+        async function fetchFeishuData() {
+            try {
+                if (!feishuToken && !await getFeishuToken()) {
+                    console.error('获取token失败');
+                    return [];
+                }
+                const url = 'https://open.feishu.cn/open-apis/bitable/v1/apps/' + FEISHU_CONFIG.appToken + '/tables/' + FEISHU_CONFIG.tableId + '/records?pageSize=500';
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer ' + feishuToken,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const result = await response.json();
+                if (result.code !== 0) {
+                    console.error('API错误:', result.msg);
+                    return [];
+                }
+                const records = result.data.items.map(function(item, index) {
+                    var f = item.fields;
+                    return {
+                        id: index + 1,
+                        name: f['姓名'] || '',
+                        model: f['授权机型'] || '',
+                        company: f['授权公司'] ? [f['授权公司']] : [],
+                        authorizeDate: f['授权日期'] || '',
+                        expireDate: f['到期日期'] || ''
+                    };
+                });
+                console.log('加载完成:', records.length, '条');
+                return records;
+            } catch (e) {
+                console.error('加载失败:', e);
+                return [];
+            }
+        }
+        // ==================== 飞书数据加载结束 ====================
+
+        // 管理员配置（密码建议部署时修改，此处为示例：123456的MD5加密）
+        const ADMIN_PASSWORD = "e10adc3949ba59abbe56e057f20f883e"; // 对应明文：123456
+        let isAdmin = false; // 管理员登录状态
+        let importedData = []; // 存储解析后的Excel数据
+
+        // 关键修改：扩展航空公司列表（新增7家公司，总数23家）
+        const AIRLINE_COMPANIES = [
+            // 原有16家
+            "中国国际航空", "中国南方航空", "中国东方航空", "海南航空",
+            "深圳航空", "厦门航空", "四川航空", "山东航空",
+            "春秋航空", "吉祥航空", "华夏航空", "首都航空",
+            "天津航空", "上海航空", "祥鹏航空", "西部航空",
+            // 新增7家
+            "九元航空", "东海航空", "河北航空", "金鹏航空",
+            "海航技术", "西藏航空"
+        ];
+
+        // 数据从飞书API加载
+        let authorizationData = [];
+
+        // 兼容旧数据：将字符串类型的company转换为数组
+        authorizationData = authorizationData.map(item => {
+            if (typeof item.company === 'string') {
+                return {
+                    ...item,
+                    company: item.company ? item.company.split(',').map(c => c.trim()) : []
+                };
+            }
+            return item;
+        });
+
+        // DOM元素
+        const tableBody = document.getElementById('tableBody');
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const addBtn = document.getElementById('addBtn');
+        const importBtn = document.getElementById('importBtn');
+        const batchDeleteBtn = document.getElementById('batchDeleteBtn'); // 新增批量删除按钮
+        const selectAllCheckbox = document.getElementById('selectAll'); // 新增全选复选框
+        const modal = document.getElementById('modal');
+        const importModal = document.getElementById('importModal');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const cancelImportBtn = document.getElementById('cancelImportBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const confirmImportBtn = document.getElementById('confirmImportBtn');
+        const authorizationForm = document.getElementById('authorizationForm');
+        const modalTitle = document.getElementById('modalTitle');
+        const reminderText = document.getElementById('reminderText');
+        const excelFile = document.getElementById('excelFile');
+        const importPreview = document.getElementById('importPreview');
+        const previewTableBody = document.getElementById('previewTableBody');
+        const successResult = document.getElementById('successResult');
+        const errorResult = document.getElementById('errorResult');
+        
+        // 新增：精准查询相关元素（修改为多选）
+        const nameSearch = document.getElementById('nameSearch');
+        const companyCheckboxGroup = document.getElementById('companyCheckboxGroup'); // 多选框组
+        const selectAllCompanies = document.getElementById('selectAllCompanies'); // 全选/取消全选
+        const modelSearch = document.getElementById('modelSearch');
+        const advancedSearchBtn = document.getElementById('advancedSearchBtn');
+        const resetSearchBtn = document.getElementById('resetSearchBtn');
+        
+        // 关键新增：模态框中的多选框元素
+        const modalCompanyCheckboxGroup = document.getElementById('modalCompanyCheckboxGroup');
+        const modalSelectAllCompanies = document.getElementById('modalSelectAllCompanies');
+        
+        // 管理员相关元素
+        const adminPwd = document.getElementById('adminPwd');
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const adminTag = document.getElementById('adminTag');
+        
+        // 页面加载时渲染数据
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 检查是否有管理员登录状态（页面刷新保留）
+            isAdmin = localStorage.getItem('isAdmin') === 'true';
+            updateAdminUI(); // 更新管理员UI状态
+
+            // 初始化授权公司多选框（搜索区域和模态框）
+            initCompanyCheckboxes();
+            initModalCompanyCheckboxes(); // 初始化模态框中的多选框
+
+            // 从飞书API加载数据
+            authorizationData = await fetchFeishuData();
+
+            renderTable(authorizationData);
+            checkExpirationReminder();
+            
+            // 绑定Excel文件选择事件
+            excelFile.addEventListener('change', handleExcelUpload);
+            
+            // 绑定全选复选框事件
+            selectAllCheckbox.addEventListener('change', handleSelectAll);
+            
+            // 绑定批量删除按钮事件
+            batchDeleteBtn.addEventListener('click', handleBatchDelete);
+            
+            // 新增：绑定公司全选/取消全选事件
+            selectAllCompanies.addEventListener('click', toggleAllCompanies);
+            modalSelectAllCompanies.addEventListener('click', toggleAllModalCompanies); // 模态框全选
+            
+            // 新增：绑定精准查询和重置按钮事件
+            advancedSearchBtn.addEventListener('click', handleAdvancedSearch);
+            resetSearchBtn.addEventListener('click', handleResetSearch);
+        });
+
+        // 初始化搜索区域授权公司多选框
+        function initCompanyCheckboxes() {
+            companyCheckboxGroup.innerHTML = '';
+            AIRLINE_COMPANIES.forEach(company => {
+                const checkboxItem = document.createElement('div');
+                checkboxItem.className = 'company-checkbox-item';
+                checkboxItem.innerHTML = `
+                    <input type="checkbox" id="company_${company}" value="${company}">
+                    <label for="company_${company}">${company}</label>
+                `;
+                companyCheckboxGroup.appendChild(checkboxItem);
+            });
+        }
+
+        // 关键新增：初始化模态框中的授权公司多选框
+        function initModalCompanyCheckboxes() {
+            modalCompanyCheckboxGroup.innerHTML = '';
+            AIRLINE_COMPANIES.forEach(company => {
+                const checkboxItem = document.createElement('div');
+                checkboxItem.className = 'company-checkbox-item';
+                checkboxItem.innerHTML = `
+                    <input type="checkbox" id="modal_company_${company}" value="${company}">
+                    <label for="modal_company_${company}">${company}</label>
+                `;
+                modalCompanyCheckboxGroup.appendChild(checkboxItem);
+            });
+        }
+
+        // 搜索区域全选/取消全选授权公司
+        function toggleAllCompanies() {
+            const checkboxes = document.querySelectorAll('#companyCheckboxGroup input[type="checkbox"]');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            
+            checkboxes.forEach(cb => {
+                cb.checked = !allChecked;
+            });
+        }
+
+        // 关键新增：模态框全选/取消全选授权公司
+        function toggleAllModalCompanies() {
+            const checkboxes = document.querySelectorAll('#modalCompanyCheckboxGroup input[type="checkbox"]');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            
+            checkboxes.forEach(cb => {
+                cb.checked = !allChecked;
+            });
+        }
+
+        // 获取搜索区域选中的授权公司列表
+        function getSelectedCompanies() {
+            const checkboxes = document.querySelectorAll('#companyCheckboxGroup input[type="checkbox"]:checked');
+            return Array.from(checkboxes).map(cb => cb.value);
+        }
+
+        // 关键新增：获取模态框中选中的授权公司列表
+        function getModalSelectedCompanies() {
+            const checkboxes = document.querySelectorAll('#modalCompanyCheckboxGroup input[type="checkbox"]:checked');
+            return Array.from(checkboxes).map(cb => cb.value);
+        }
+
+        // 关键新增：清空模态框中的公司选择
+        function clearModalCompanySelection() {
+            const checkboxes = document.querySelectorAll('#modalCompanyCheckboxGroup input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.checked = false;
+            });
+        }
+
+        // 关键新增：设置模态框中的公司选择
+        function setModalCompanySelection(companies) {
+            clearModalCompanySelection();
+            if (!Array.isArray(companies)) return;
+            
+            companies.forEach(company => {
+                const checkbox = document.getElementById(`modal_company_${company}`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                }
+            });
+        }
+
+        // MD5加密函数（简化版，用于密码验证）
+        function md5(str) {
+            // 简化实现，实际生产环境建议使用更安全的加密方式
+            const md5Hash = {
+                '123456': 'e10adc3949ba59abbe56e057f20f883e'
+            };
+            return md5Hash[str] || '';
+        }
+
+        // 管理员登录
+        loginBtn.addEventListener('click', () => {
+            const pwd = adminPwd.value.trim();
+            if (!pwd) {
+                alert('请输入管理员密码！');
+                return;
+            }
+            if (md5(pwd) === ADMIN_PASSWORD) {
+                isAdmin = true;
+                localStorage.setItem('isAdmin', 'true'); // 保存登录状态
+                adminPwd.value = ''; // 清空密码框
+                updateAdminUI(); // 更新UI
+                renderTable(authorizationData); // 重新渲染表格显示复选框和删除按钮
+                alert('管理员登录成功！');
+            } else {
+                alert('密码错误，请重试！');
+            }
+        });
+
+        // 管理员退出登录
+        logoutBtn.addEventListener('click', () => {
+            isAdmin = false;
+            localStorage.removeItem('isAdmin'); // 清除登录状态
+            updateAdminUI(); // 更新UI
+            renderTable(authorizationData); // 重新渲染表格隐藏复选框和删除按钮
+            alert('已退出管理员登录！');
+        });
+
+        // 更新管理员相关UI
+        function updateAdminUI() {
+            if (isAdmin) {
+                loginBtn.style.display = 'none';
+                logoutBtn.style.display = 'inline-block';
+                adminTag.style.display = 'inline';
+                addBtn.style.display = 'inline-block';
+                importBtn.style.display = 'inline-block';
+                batchDeleteBtn.style.display = 'inline-block'; // 显示批量删除按钮
+                // 显示所有操作按钮
+                document.querySelectorAll('.edit-btn, .delete-btn').forEach(btn => {
+                    btn.style.display = 'inline-block';
+                });
+                // 显示全选复选框
+                selectAllCheckbox.style.display = 'inline-block';
+            } else {
+                loginBtn.style.display = 'inline-block';
+                logoutBtn.style.display = 'none';
+                adminTag.style.display = 'none';
+                addBtn.style.display = 'none';
+                importBtn.style.display = 'none';
+                batchDeleteBtn.style.display = 'none'; // 隐藏批量删除按钮
+                // 隐藏所有操作按钮
+                document.querySelectorAll('.edit-btn, .delete-btn').forEach(btn => {
+                    btn.style.display = 'none';
+                });
+                // 隐藏全选复选框
+                selectAllCheckbox.style.display = 'none';
+                // 取消全选状态
+                selectAllCheckbox.checked = false;
+            }
+        }
+
+        // 渲染表格数据（修改：适配company数组显示）
+        function renderTable(data) {
+            tableBody.innerHTML = '';
+            
+            if (data.length === 0) {
+                const emptyRow = document.createElement('tr');
+                emptyRow.innerHTML = `<td colspan="${isAdmin ? 8 : 7}" style="text-align: center; color: #666;">暂无授权信息</td>`;
+                tableBody.appendChild(emptyRow);
+                return;
+            }
+
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                const status = getStatusText(item.expireDate);
+                
+                // 设置行样式（到期提醒/已过期）
+                if (status.includes('即将到期')) {
+                    row.classList.add('warning');
+                } else if (status.includes('已过期')) {
+                    row.classList.add('expired');
+                }
+
+                // 根据管理员状态决定是否显示操作按钮和复选框
+                const checkboxHtml = isAdmin ? 
+                    `<td class="checkbox-col"><input type="checkbox" class="record-checkbox" data-id="${item.id}"></td>` : '';
+                
+                const actionBtnHtml = isAdmin 
+                    ? `<button class="edit-btn" onclick="editRecord(${item.id})">编辑</button>
+                       <button class="delete-btn" onclick="deleteRecord(${item.id})">删除</button>`
+                    : '';
+
+                // 关键修改：将company数组转为逗号分隔的字符串显示
+                const companyText = Array.isArray(item.company) ? item.company.join('、') : item.company;
+
+                // 调整表格列数（管理员显示8列，普通用户7列）
+                row.innerHTML = `${checkboxHtml}
+                    <td>${item.name}</td>
+                    <td>${item.model}</td>
+                    <td>${companyText}</td>
+                    <td>${formatDate(item.authorizeDate)}</td>
+                    <td>${formatDate(item.expireDate)}</td>
+                    <td>${status}</td>
+                    <td class="action-btn">${actionBtnHtml}</td>`;
+                tableBody.appendChild(row);
+            });
+        }
+
+        // 全选/取消全选
+        function handleSelectAll() {
+            if (!isAdmin) return;
+            
+            const checkboxes = document.querySelectorAll('.record-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+        }
+
+        // 批量删除选中记录
+        function handleBatchDelete() {
+            if (!isAdmin) {
+                alert('无管理员权限，无法执行此操作！');
+                return;
+            }
+            
+            // 获取选中的记录ID
+            const selectedCheckboxes = document.querySelectorAll('.record-checkbox:checked');
+            if (selectedCheckboxes.length === 0) {
+                alert('请先选择要删除的记录！');
+                return;
+            }
+            
+            const selectedIds = Array.from(selectedCheckboxes).map(checkbox => parseInt(checkbox.dataset.id));
+            const selectedNames = authorizationData
+                .filter(item => selectedIds.includes(item.id))
+                .map(item => item.name)
+                .join('、');
+            
+            if (confirm(`确定要删除选中的${selectedIds.length}条记录吗？\n选中人员：${selectedNames}`)) {
+                // 过滤掉选中的记录
+                authorizationData = authorizationData.filter(item => !selectedIds.includes(item.id));
+                
+                // 保存到localStorage
+                localStorage.setItem('authorizationData', JSON.stringify(authorizationData));
+                
+                // 刷新表格和提醒
+                renderTable(authorizationData);
+                checkExpirationReminder();
+                
+                // 取消全选状态
+                selectAllCheckbox.checked = false;
+                
+                alert(`成功删除${selectedIds.length}条记录！`);
+            }
+        }
+
+        // 格式化日期显示
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+        }
+
+        // 验证日期格式
+        function isValidDate(dateStr) {
+            const regex = /^\d{4}-\d{2}-\d{2}$/;
+            if (!regex.test(dateStr)) return false;
+            
+            const date = new Date(dateStr);
+            return date instanceof Date && !isNaN(date.getTime());
+        }
+
+        // 验证授权公司是否合法（自动适配新增公司）
+        function isValidCompany(company) {
+            return AIRLINE_COMPANIES.includes(company.trim());
+        }
+
+        // 关键新增：验证授权公司数组是否合法
+        function isValidCompanyArray(companies) {
+            if (!Array.isArray(companies) || companies.length === 0) return false;
+            return companies.every(company => isValidCompany(company));
+        }
+
+        // 获取状态文本（正常/即将到期/已过期）
+        function getStatusText(expireDate) {
+            const today = new Date();
+            const expire = new Date(expireDate);
+            const diffTime = expire - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays < 0) {
+                return `已过期（过期${Math.abs(diffDays)}天）`;
+            } else if (diffDays <= 30) {
+                return `即将到期（剩余${diffDays}天）`;
+            } else {
+                return '正常';
+            }
+        }
+
+        // 检查到期提醒
+        function checkExpirationReminder() {
+            const reminderList = [];
+            
+            authorizationData.forEach(item => {
+                const today = new Date();
+                const expire = new Date(item.expireDate);
+                const diffDays = Math.ceil((expire - today) / (1000 * 60 * 60 * 24));
+                
+                if (diffDays >= 0 && diffDays <= 30) {
+                    const companyText = Array.isArray(item.company) ? item.company.join('、') : item.company;
+                    reminderList.push(`${item.name}（${companyText}-${item.model}）：剩余${diffDays}天`);
+                }
+            });
+
+            if (reminderList.length > 0) {
+                reminderText.textContent = reminderList.join('；');
+            } else {
+                reminderText.textContent = '暂无即将到期的授权信息';
+            }
+        }
+
+        // 原有模糊搜索功能（修改：适配company数组）
+        searchBtn.addEventListener('click', () => {
+            const keyword = searchInput.value.trim().toLowerCase();
+            if (!keyword) {
+                renderTable(authorizationData);
+                return;
+            }
+
+            const filteredData = authorizationData.filter(item => 
+                item.name.toLowerCase().includes(keyword) || 
+                item.model.toLowerCase().includes(keyword) ||
+                (Array.isArray(item.company) && item.company.some(c => c.toLowerCase().includes(keyword))) ||
+                (typeof item.company === 'string' && item.company.toLowerCase().includes(keyword))
+            );
+            renderTable(filteredData);
+        });
+
+        // 新增：精准多条件查询功能（修改：适配company数组）
+        function handleAdvancedSearch() {
+            const name = nameSearch.value.trim();
+            const selectedCompanies = getSelectedCompanies(); // 获取选中的多个公司
+            const model = modelSearch.value.trim();
+            
+            // 至少输入一个查询条件
+            if (!name && selectedCompanies.length === 0 && !model) {
+                alert('请至少填写一个精准查询条件！');
+                return;
+            }
+            
+            // 多条件过滤
+            let filteredData = [...authorizationData];
+            
+            // 姓名精确匹配
+            if (name) {
+                filteredData = filteredData.filter(item => item.name === name);
+            }
+            
+            // 公司多值匹配（修改：适配数组）
+            if (selectedCompanies.length > 0) {
+                filteredData = filteredData.filter(item => {
+                    const itemCompanies = Array.isArray(item.company) ? item.company : [item.company];
+                    return itemCompanies.some(c => selectedCompanies.includes(c));
+                });
+            }
+            
+            // 机型精确匹配
+            if (model) {
+                filteredData = filteredData.filter(item => item.model === model);
+            }
+            
+            // 渲染结果
+            renderTable(filteredData);
+            
+            // 提示查询结果数量
+            if (filteredData.length === 0) {
+                alert('未找到匹配的授权信息！');
+            } else {
+                alert(`找到${filteredData.length}条匹配的授权信息`);
+            }
+        }
+        
+        // 新增：重置查询条件（包含清空公司多选）
+        function handleResetSearch() {
+            nameSearch.value = '';
+            modelSearch.value = '';
+            searchInput.value = '';
+            
+            // 清空所有公司复选框
+            document.querySelectorAll('#companyCheckboxGroup input[type="checkbox"]').forEach(cb => {
+                cb.checked = false;
+            });
+            
+            renderTable(authorizationData);
+        }
+
+        // 新增按钮点击事件（增加权限校验）
+        addBtn.addEventListener('click', () => {
+            if (!isAdmin) {
+                alert('无管理员权限，无法执行此操作！');
+                return;
+            }
+            modalTitle.textContent = '新增授权信息';
+            authorizationForm.reset();
+            document.getElementById('recordId').value = '';
+            clearModalCompanySelection(); // 清空模态框中的公司选择
+            modal.style.display = 'flex';
+        });
+
+        // 导入Excel按钮点击事件
+        importBtn.addEventListener('click', () => {
+            if (!isAdmin) {
+                alert('无管理员权限，无法执行此操作！');
+                return;
+            }
+            // 重置导入模态框状态
+            excelFile.value = '';
+            importPreview.style.display = 'none';
+            confirmImportBtn.style.display = 'none';
+            successResult.style.display = 'none';
+            errorResult.style.display = 'none';
+            importedData = [];
+            importModal.style.display = 'flex';
+        });
+
+        // 处理Excel文件上传（修改：适配company数组）
+        function handleExcelUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // 检查文件类型
+            const fileExt = file.name.split('.').pop().toLowerCase();
+            if (!['xlsx', 'xls'].includes(fileExt)) {
+                alert('请上传Excel文件（.xlsx或.xls格式）！');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    // 解析Excel文件
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // 获取第一个工作表
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    
+                    // 转换为JSON
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    
+                    if (jsonData.length === 0) {
+                        alert('Excel文件中未检测到数据！');
+                        return;
+                    }
+
+                    // 验证表头（新增授权公司）
+                    const requiredHeaders = ['人员姓名', '授权机型', '授权公司', '授权日期', '到期日期'];
+                    const firstRowKeys = Object.keys(jsonData[0]);
+                    const missingHeaders = requiredHeaders.filter(header => 
+                        !firstRowKeys.some(key => key.includes(header))
+                    );
+
+                    if (missingHeaders.length > 0) {
+                        alert(`Excel格式错误：缺少必要的表头 - ${missingHeaders.join('、')}`);
+                        return;
+                    }
+
+                    // 解析和验证数据
+                    parseAndValidateExcelData(jsonData);
+
+                } catch (error) {
+                    console.error('解析Excel失败:', error);
+                    alert('解析Excel文件失败，请检查文件格式是否正确！');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 解析和验证Excel数据（修改：适配company数组）
+        function parseAndValidateExcelData(jsonData) {
+            previewTableBody.innerHTML = '';
+            importedData = [];
+            let validCount = 0;
+            let errorCount = 0;
+            const errorMessages = [];
+
+            jsonData.forEach((row, index) => {
+                const rowNum = index + 2; // Excel行号（从2开始，跳过表头）
+                const record = {
+                    rowNum: rowNum,
+                    name: row['人员姓名'] || row['姓名'] || '',
+                    model: row['授权机型'] || row['机型'] || '',
+                    company: row['授权公司'] || row['公司'] || '',
+                    authorizeDate: row['授权日期'] || '',
+                    expireDate: row['到期日期'] || ''
+                };
+
+                // 格式化日期（处理Excel日期数字）
+                if (typeof record.authorizeDate === 'number') {
+                    record.authorizeDate = formatExcelDate(record.authorizeDate);
+                }
+                if (typeof record.expireDate === 'number') {
+                    record.expireDate = formatExcelDate(record.expireDate);
+                }
+
+                // 转换为标准日期格式
+                record.authorizeDate = normalizeDate(record.authorizeDate);
+                record.expireDate = normalizeDate(record.expireDate);
+
+                // 关键修改：处理授权公司（逗号分隔转数组）
+                let companyArray = [];
+                if (typeof record.company === 'string' && record.company.trim()) {
+                    companyArray = record.company.split(',').map(c => c.trim());
+                }
+
+                // 验证数据（修改：验证公司数组）
+                const errors = [];
+                if (!record.name.trim()) errors.push('人员姓名不能为空');
+                if (!record.model.trim()) errors.push('授权机型不能为空');
+                if (companyArray.length === 0) errors.push('授权公司不能为空');
+                else {
+                    const invalidCompanies = companyArray.filter(c => !isValidCompany(c));
+                    if (invalidCompanies.length > 0) {
+                        errors.push(`授权公司不合法：${invalidCompanies.join('、')}（必须是系统支持的航空公司之一）`);
+                    }
+                }
+                if (!isValidDate(record.authorizeDate)) errors.push('授权日期格式错误（应为YYYY-MM-DD）');
+                if (!isValidDate(record.expireDate)) errors.push('到期日期格式错误（应为YYYY-MM-DD）');
+                
+                if (isValidDate(record.authorizeDate) && isValidDate(record.expireDate)) {
+                    if (new Date(record.expireDate) < new Date(record.authorizeDate)) {
+                        errors.push('到期日期不能早于授权日期');
+                    }
+                }
+
+                // 创建预览行
+                const previewRow = document.createElement('tr');
+                if (errors.length > 0) {
+                    previewRow.classList.add('error-row');
+                    errorCount++;
+                    errorMessages.push(`第${rowNum}行：${errors.join('；')}`);
+                } else {
+                    validCount++;
+                    importedData.push({
+                        name: record.name.trim(),
+                        model: record.model.trim(),
+                        company: companyArray, // 存储为数组
+                        authorizeDate: record.authorizeDate,
+                        expireDate: record.expireDate
+                    });
+                }
+
+                previewRow.innerHTML = `
+                    <td>${rowNum}</td>
+                    <td>${record.name || '-'}</td>
+                    <td>${record.model || '-'}</td>
+                    <td>${companyArray.join('、') || '-'}</td>
+                    <td>${record.authorizeDate || '-'}</td>
+                    <td>${record.expireDate || '-'}</td>
+                    <td>${errors.length > 0 ? '❌ ' + errors.join('；') : '✅ 验证通过'}</td>
+                `;
+                previewTableBody.appendChild(previewRow);
+            });
+
+            // 显示预览结果
+            importPreview.style.display = 'block';
+            
+            // 显示结果统计
+            if (errorCount > 0) {
+                errorResult.textContent = `数据验证失败：共${jsonData.length}条，有效${validCount}条，错误${errorCount}条。请修正错误后重新导入。`;
+                errorResult.style.display = 'block';
+                successResult.style.display = 'none';
+                confirmImportBtn.style.display = 'none';
+            } else {
+                successResult.textContent = `数据验证成功：共${validCount}条数据，可导入。`;
+                successResult.style.display = 'block';
+                errorResult.style.display = 'none';
+                confirmImportBtn.style.display = 'inline-block';
+            }
+        }
+
+        // 格式化Excel日期（Excel日期数字转换为标准日期）
+        function formatExcelDate(excelDate) {
+            const excelEpoch = new Date(1900, 0, 1);
+            // Excel日期从1900-01-01开始，且有一个闰年错误（多算了1900年2月29日）
+            const date = new Date(excelEpoch.getTime() + (excelDate - 2) * 86400000);
+            return formatDate(date);
+        }
+
+        // 标准化日期格式
+        function normalizeDate(dateStr) {
+            if (!dateStr) return '';
+            
+            // 处理各种日期格式
+            dateStr = dateStr.toString().trim();
+            
+            // 如果是YYYY/MM/DD格式，转换为YYYY-MM-DD
+            if (dateStr.includes('/')) {
+                const parts = dateStr.split('/');
+                if (parts.length === 3) {
+                    return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                }
+            }
+            
+            // 如果是中文格式（如2024年01月15日）
+            if (dateStr.includes('年')) {
+                return dateStr.replace('年', '-').replace('月', '-').replace('日', '');
+            }
+            
+            return dateStr;
+        }
+
+        // 确认导入Excel数据（修改：适配company数组）
+        confirmImportBtn.addEventListener('click', () => {
+            if (importedData.length === 0) {
+                alert('没有可导入的有效数据！');
+                return;
+            }
+
+            if (confirm(`确认导入${importedData.length}条授权信息吗？\n注意：导入不会覆盖现有数据，只会新增。`)) {
+                // 生成新ID并添加数据
+                const maxId = authorizationData.length > 0 
+                    ? Math.max(...authorizationData.map(item => item.id)) 
+                    : 0;
+
+                importedData.forEach((item, index) => {
+                    authorizationData.push({
+                        id: maxId + index + 1,
+                        name: item.name,
+                        model: item.model,
+                        company: item.company, // 存储为数组
+                        authorizeDate: item.authorizeDate,
+                        expireDate: item.expireDate
+                    });
+                });
+
+                // 保存到localStorage
+                localStorage.setItem('authorizationData', JSON.stringify(authorizationData));
+                
+                // 刷新表格和提醒
+                renderTable(authorizationData);
+                checkExpirationReminder();
+                
+                // 关闭模态框
+                importModal.style.display = 'none';
+                
+                alert(`成功导入${importedData.length}条授权信息！`);
+            }
+        });
+
+        // 取消按钮点击事件
+        cancelBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+
+        // 取消导入按钮点击事件
+        cancelImportBtn.addEventListener('click', () => {
+            importModal.style.display = 'none';
+        });
+
+        // 保存表单数据（关键修改：适配company数组）
+        authorizationForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            if (!isAdmin) {
+                alert('无管理员权限，无法执行此操作！');
+                modal.style.display = 'none';
+                return;
+            }
+            
+            const id = document.getElementById('recordId').value;
+            const name = document.getElementById('name').value.trim();
+            const model = document.getElementById('model').value.trim();
+            const companyArray = getModalSelectedCompanies(); // 获取多选的公司数组
+            const authorizeDate = document.getElementById('authorizeDate').value;
+            const expireDate = document.getElementById('expireDate').value;
+
+            // 简单验证
+            if (!name || !model) {
+                alert('请填写姓名和授权机型！');
+                return;
+            }
+            
+            if (companyArray.length === 0) {
+                alert('请至少选择一个授权公司！');
+                return;
+            }
+
+            if (!isValidCompanyArray(companyArray)) {
+                alert('授权公司选择错误，请选择列表中的航空公司！');
+                return;
+            }
+
+            if (!authorizeDate || !expireDate) {
+                alert('请选择授权日期和到期日期！');
+                return;
+            }
+
+            if (new Date(expireDate) < new Date(authorizeDate)) {
+                alert('到期日期不能早于授权日期！');
+                return;
+            }
+
+            if (id) {
+                // 编辑现有记录
+                const index = authorizationData.findIndex(item => item.id == id);
+                authorizationData[index] = {
+                    id: parseInt(id),
+                    name,
+                    model,
+                    company: companyArray, // 存储为数组
+                    authorizeDate,
+                    expireDate
+                };
+            } else {
+                // 新增记录
+                const newId = authorizationData.length > 0 
+                    ? Math.max(...authorizationData.map(item => item.id)) + 1 
+                    : 1;
+                
+                authorizationData.push({
+                    id: newId,
+                    name,
+                    model,
+                    company: companyArray, // 存储为数组
+                    authorizeDate,
+                    expireDate
+                });
+            }
+
+            // 保存到localStorage
+            localStorage.setItem('authorizationData', JSON.stringify(authorizationData));
+            
+            // 刷新表格和提醒
+            renderTable(authorizationData);
+            checkExpirationReminder();
+            
+            // 关闭模态框
+            modal.style.display = 'none';
+        });
+
+        // 编辑记录（关键修改：适配company数组）
+        window.editRecord = function(id) {
+            if (!isAdmin) {
+                alert('无管理员权限，无法执行此操作！');
+                return;
+            }
+            const record = authorizationData.find(item => item.id === id);
+            if (record) {
+                modalTitle.textContent = '编辑授权信息';
+                document.getElementById('recordId').value = record.id;
+                document.getElementById('name').value = record.name;
+                document.getElementById('model').value = record.model;
+                // 关键修改：设置模态框中的公司多选
+                setModalCompanySelection(record.company);
+                document.getElementById('authorizeDate').value = record.authorizeDate;
+                document.getElementById('expireDate').value = record.expireDate;
+                modal.style.display = 'flex';
+            }
+        };
+
+        // 删除记录（优化提示信息，增加权限校验）
+        window.deleteRecord = function(id) {
+            if (!isAdmin) {
+                alert('无管理员权限，无法执行此操作！');
+                return;
+            }
+            
+            // 获取要删除的记录信息
+            const record = authorizationData.find(item => item.id === id);
+            if (!record) {
+                alert('该记录不存在！');
+                return;
+            }
+            
+            const companyText = Array.isArray(record.company) ? record.company.join('、') : record.company;
+            if (confirm(`确定要删除【${record.name} - ${companyText} - ${record.model}】这条记录吗？\n此操作不可撤销！`)) {
+                authorizationData = authorizationData.filter(item => item.id !== id);
+                localStorage.setItem('authorizationData', JSON.stringify(authorizationData));
+                renderTable(authorizationData);
+                checkExpirationReminder();
+                
+                // 取消全选状态（如果当前记录被选中）
+                selectAllCheckbox.checked = false;
+                
+                alert(`成功删除【${record.name}】的授权信息！`);
+            }
+        };
+
+        // 点击模态框外部关闭
+        window.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+            if (e.target === importModal) {
+                importModal.style.display = 'none';
+            }
+        });
+
+        // 移动端优化：点击搜索框自动聚焦
+        searchInput.addEventListener('touchstart', () => {
+            searchInput.focus();
+        });
+        
+        // 新增：移动端精准查询输入框聚焦优化
+        nameSearch.addEventListener('touchstart', () => nameSearch.focus());
+        modelSearch.addEventListener('touchstart', () => modelSearch.focus());
+
+        // 监听管理员状态变化，实时更新表格操作按钮
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'isAdmin') {
+                isAdmin = e.newValue === 'true';
+                updateAdminUI();
+                renderTable(authorizationData);
+            }
+        });
+    </script>
+</body>
+</html>
